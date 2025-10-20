@@ -1,4 +1,12 @@
 apiVersion: v1
+kind: Namespace
+metadata:
+  name: keycloak
+  labels:
+    name: keycloak
+
+---
+apiVersion: v1
 kind: Service
 metadata:
   name: keycloak
@@ -10,11 +18,12 @@ spec:
   ports:
     - protocol: TCP
       port: 8080
-      targetPort: http
+      targetPort: 8080
       name: http
+      nodePort: 32100
   selector:
     app: keycloak
-  type: ClusterIP
+  type: NodePort
 ---
 apiVersion: v1
 kind: Service
@@ -29,8 +38,13 @@ spec:
     app: keycloak
   # Allow not-yet-ready Pods to be visible to ensure the forming of a cluster if Pods come up concurrently
   publishNotReadyAddresses: true
-  ClusterIP: None
-  type: ClusterIP
+  type: NodePort
+  ports:
+    - name: http
+      protocol: TCP
+      port: 8080
+      targetPort: 8080
+      nodePort: 32101
 ---
 apiVersion: apps/v1
 # Use a stateful setup to ensure that for a rolling update Pods are restarted with a rolling strategy one-by-one.
@@ -45,7 +59,7 @@ metadata:
 spec:
   serviceName: keycloak-discovery
   # Run with one replica to save resources, or with two replicas to allow for rolling updates for configuration changes
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
       app: keycloak
@@ -132,21 +146,17 @@ spec:
               cpu: 500m
               memory: 1700Mi
 ---
-# This is deployment of PostgreSQL with an ephemeral storage for testing: Once the Pod stops, the data is lost.
-# For a production setup, replace it with a database setup that persists your data.
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: postgres
+  namespace: keycloak
   labels:
     app: postgres
 spec:
-  replicas: 1
   selector:
     matchLabels:
       app: postgres
-      namespace: keycloak
-
   template:
     metadata:
       labels:
@@ -168,12 +178,12 @@ spec:
             - name: postgres
               containerPort: 5432
           volumeMounts:
-            # Using volume mount for PostgreSQL's data folder as it is otherwise not writable
             - name: postgres-data
               mountPath: /var/lib/postgresql
       volumes:
         - name: postgres-data
           emptyDir: {}
+
 ---
 apiVersion: v1
 kind: Service

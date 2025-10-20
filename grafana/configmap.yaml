@@ -13,22 +13,21 @@ metadata:
 data:
   grafana.ini: |
     [server]
-    root_url = http://grafana:3000/
+    root_url = http://192.168.88.120:32000/
 
-    [auth]
-    disable_login_form = fals
     [auth.generic_oauth]
-    verbose_logging = true
     enabled = true
     name = Keycloak
     allow_sign_up = true
     client_id = grafana
-    client_secret = CPtGqGpvAQAtBYAK2ihFg1UolDp0WDfp
+    client_secret = D9YDa6yFK2Dk2YnzjYZkOzg2VjWmHcwe
     scopes = openid email profile
-    auth_url = http://keyclook:8080/realms/grafana/protocol/openid-connect/auth
-    token_url = http://keyclook:8080/realms/grafana/protocol/openid-connect/token
-    api_url = http://keyclook:8080/realms/grafana/protocol/openid-connect/userinfo
+    auth_url = http://192.168.88.121:32100/realms/grafana/protocol/openid-connect/auth
+    token_url = http://192.168.88.121:32100/realms/grafana/protocol/openid-connect/token
+    api_url = http://192.168.88.121:32100/realms/grafana/protocol/openid-connect/userinfo
     role_attribute_path = contains(realm_access.roles[*], 'admin') && 'Admin' || 'Viewer'
     login_attribute_path = preferred_username
     name_attribute_path = name
     email_attribute_path = email
+    verbose_logging = true
+
