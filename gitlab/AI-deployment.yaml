@@ -87,7 +87,7 @@ spec:
     spec:
       containers:
         - name: postgresql
-          image: postgres:13
+          image: postgres:16
           env:
             - name: POSTGRES_DB
               value: gitlabhq_production
@@ -98,11 +98,13 @@ spec:
           ports:
             - containerPort: 5432
           volumeMounts:
-            - name: pgdata
-              mountPath: /var/lib/postgresql/data
+            - name: postgres-data
+              mountPath: /var/lib/postgresql-gitlab
       volumes:
-        - name: pgdata
-          emptyDir: {}
+        - name: postgres-data
+          persistentVolumeClaim:
+            claimName: postgres-data-pvc-gitlab
+
 ---
 # Redis
 apiVersion: v1

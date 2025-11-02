@@ -13,7 +13,7 @@ metadata:
 data:
   grafana.ini: |
     [server]
-    root_url = http://192.168.88.120:32000/
+    root_url = http://192.168.88.83:32000/
 
     [auth.generic_oauth]
     enabled = true
@@ -22,9 +22,9 @@ data:
     client_id = grafana
     client_secret = D9YDa6yFK2Dk2YnzjYZkOzg2VjWmHcwe
     scopes = openid email profile
-    auth_url = http://192.168.88.121:32100/realms/grafana/protocol/openid-connect/auth
-    token_url = http://192.168.88.121:32100/realms/grafana/protocol/openid-connect/token
-    api_url = http://192.168.88.121:32100/realms/grafana/protocol/openid-connect/userinfo
+    auth_url = http://192.168.88.83:32100/realms/grafana/protocol/openid-connect/auth
+    token_url = http://192.168.88.83:32100/realms/grafana/protocol/openid-connect/token
+    api_url = http://192.168.88.83:32100/realms/grafana/protocol/openid-connect/userinfo
     role_attribute_path = contains(realm_access.roles[*], 'admin') && 'Admin' || 'Viewer'
     login_attribute_path = preferred_username
     name_attribute_path = name
