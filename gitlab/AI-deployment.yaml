@@ -1,0 +1,148 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: gitlab
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: gitlab
+  namespace: gitlab
+spec:
+  type: NodePort
+  ports:
+    - port: 80
+      targetPort: 80
+      nodePort: 32080
+      protocol: TCP
+  selector:
+    app: gitlab
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gitlab
+  namespace: gitlab
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: gitlab
+  template:
+    metadata:
+      labels:
+        app: gitlab
+    spec:
+      containers:
+        - name: gitlab
+          image: gitlab/gitlab-ce:latest
+          ports:
+            - containerPort: 80
+          env:
+            - name: GITLAB_OMNIBUS_CONFIG
+              value: |
+                external_url 'http://localhost'
+                gitlab_rails['db_adapter'] = 'postgresql'
+                gitlab_rails['db_encoding'] = 'unicode'
+                gitlab_rails['db_host'] = 'gitlab-postgresql.gitlab.svc.cluster.local'
+                gitlab_rails['db_port'] = 5432
+                gitlab_rails['db_username'] = 'gitlab'
+                gitlab_rails['db_password'] = 'gitlabpass'
+                gitlab_rails['redis_host'] = 'gitlab-redis.gitlab.svc.cluster.local'
+                gitlab_rails['redis_port'] = 6379
+          volumeMounts:
+            - name: gitlab-data
+              mountPath: /var/opt/gitlab
+      volumes:
+        - name: gitlab-data
+          emptyDir: {}
+---
+# PostgreSQL
+apiVersion: v1
+kind: Service
+metadata:
+  name: gitlab-postgresql
+  namespace: gitlab
+spec:
+  type: ClusterIP
+  ports:
+    - port: 5432
+  selector:
+    app: gitlab-postgresql
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gitlab-postgresql
+  namespace: gitlab
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: gitlab-postgresql
+  template:
+    metadata:
+      labels:
+        app: gitlab-postgresql
+    spec:
+      containers:
+        - name: postgresql
+          image: postgres:16
+          env:
+            - name: POSTGRES_DB
+              value: gitlabhq_production
+            - name: POSTGRES_USER
+              value: gitlab
+            - name: POSTGRES_PASSWORD
+              value: gitlabpass
+          ports:
+            - containerPort: 5432
+          volumeMounts:
+            - name: postgres-data
+              mountPath: /var/lib/postgresql-gitlab
+      volumes:
+        - name: postgres-data
+          persistentVolumeClaim:
+            claimName: postgres-data-pvc-gitlab
+
+---
+# Redis
+apiVersion: v1
+kind: Service
+metadata:
+  name: gitlab-redis
+  namespace: gitlab
+spec:
+  type: ClusterIP
+  ports:
+    - port: 6379
+  selector:
+    app: gitlab-redis
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gitlab-redis
+  namespace: gitlab
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: gitlab-redis
+  template:
+    metadata:
+      labels:
+        app: gitlab-redis
+    spec:
+      containers:
+        - name: redis
+          image: redis:7
+          ports:
+            - containerPort: 6379
+          volumeMounts:
+            - name: redis-data
+              mountPath: /data
+      volumes:
+        - name: redis-data
+          emptyDir: {}
+
