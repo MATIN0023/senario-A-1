@@ -1,0 +1,83 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database Service
+  postgresql-db:
+    image: postgres:16
+    container_name: gitlab-postgresql
+    restart: always
+    # Use a .env file for passwords in production
+    environment:
+      POSTGRES_USER: gitlab
+      # CHANGE THIS PASSWORD!
+      POSTGRES_PASSWORD: 'YOUR_STRONG_PASSWORD'
+      POSTGRES_DB: gitlabhq_production
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - gitlab-network
+
+  # GitLab CE Application Service
+  gitlab-web:
+    image: gitlab/gitlab-ce:latest
+    container_name: gitlab-web
+    restart: always
+    hostname: 'gitlab.example.com' # Change this to your domain or IP
+    environment:
+      # IMPORTANT: This is where all GitLab configuration happens.
+      GITLAB_OMNIBUS_CONFIG: |
+        # URL where GitLab will be accessible
+        external_url 'http://gitlab.example.com' # Must match the hostname
+        gitlab_rails['gitlab_shell_ssh_port'] = 2222
+        # Configure the database connection
+        gitlab_rails['db_adapter'] = 'postgresql'
+        gitlab_rails['db_encoding'] = 'unicode'
+        gitlab_rails['db_database'] = 'gitlabhq_production'
+        gitlab_rails['db_username'] = 'gitlab'
+        gitlab_rails['db_password'] = 'YOUR_STRONG_PASSWORD' # MUST match the DB password
+        gitlab_rails['db_host'] = 'postgresql-db' # The service name of the DB container
+        gitlab_rails['db_port'] = 5432
+
+        # Disable the built-in Postgres since we are using an external one
+        postgresql['enable'] = false
+
+        # Disable the built-in Redis if you plan to use an external one.
+        # For a single-server setup, the built-in Redis is fine.
+        # redis['enable'] = true
+
+        # Optional: Configure SMTP for email notifications
+        # gitlab_rails['smtp_address'] = "smtp.example.com"
+        # gitlab_rails['smtp_port'] = 587
+        # gitlab_rails['smtp_user_name'] = "smtp user"
+        # gitlab_rails['smtp_password'] = "smtp password"
+        # gitlab_rails['smtp_domain'] = "example.com"
+        # gitlab_rails['smtp_authentication'] = "login"
+        # gitlab_rails['smtp_enable_starttls_auto'] = true
+        # gitlab_rails['gitlab_email_from'] = 'gitlab@example.com'
+        # gitlab_rails['gitlab_email_reply_to'] = 'noreply@example.com'
+
+    ports:
+      - '80:80'   # HTTP
+      - '443:443' # HTTPS (for later when you add SSL)
+    volumes:
+      - gitlab-config:/etc/gitlab
+      - gitlab-logs:/var/log/gitlab
+      - gitlab-data:/var/opt/gitlab
+    networks:
+      - gitlab-network
+    depends_on:
+      - postgresql-db
+
+# Define the network and volumes
+networks:
+  gitlab-network:
+    driver: bridge
+
+volumes:
+  postgres-data:
+    driver: local
+  gitlab-config:
+    driver: local
+  gitlab-logs:
+    driver: local
+  gitlab-data:
