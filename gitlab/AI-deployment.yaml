@@ -145,4 +145,5 @@ spec:
       volumes:
         - name: redis-data
           emptyDir: {}
-
+#for get init passworrd :
+# kubectl exec -it gitlab-f9994754c-p9z67  -n gitlab -- grep 'Password:' /etc/gitlab/initial_root_password
