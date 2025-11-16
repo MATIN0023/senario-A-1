@@ -1,0 +1,29 @@
+apiVersion: apiserver.config.k8s.io/v1
+kind: EncryptionConfiguration
+resources:
+  - resources:
+      - secrets
+    providers:
+      # Primary encryption method - most secure
+      - aescbc:
+          keys:
+            - name: key1
+              secret: <32-byte-base64-encoded-key-1>
+            - name: key2
+              secret: <32-byte-base64-encoded-key-2>
+      
+      # Secondary encryption method - good performance
+      - kms:
+          name: my-kms-provider
+          endpoint: unix:///var/run/kms-plugin/socket.sock
+          cachesize: 1000
+          timeout: 3s
+      
+      # Key management service (external)
+      - secretbox:
+          keys:
+            - name: key1
+              secret: <32-byte-base64-encoded-key>
+      
+      # For reading existing unencrypted secrets (remove after migration)
+      - identity: {}
