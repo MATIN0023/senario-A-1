@@ -27,14 +27,20 @@ spec:
           image: mirror.gcr.io/postgres:17
           env:
             - name: POSTGRES_USER
-              value: "keycloak"
+              valueFrom:
+                secretKeyRef:
+                  name: keycloak-secrets
+                  key: KC_DB_USERNAME
             - name: POSTGRES_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: keycloak-secrets
                   key: KC_DB_PASSWORD
             - name: POSTGRES_DB
-              value: "keycloak"
+              valueFrom:
+                secretKeyRef:
+                  name: keycloak-secrets
+                  key: KC_DB_NAME
             - name: POSTGRES_LOG_STATEMENT
               value: "all"
           ports:
@@ -126,7 +132,10 @@ spec:
           args: ["start"]
           env:
             - name: KC_BOOTSTRAP_ADMIN_USERNAME
-              value: "admin"
+              valueFrom:
+                secretKeyRef:
+                  name: keycloak-secret
+                  key: KC_BOOTSTRAP_ADMIN_USERNAME
             - name: KC_BOOTSTRAP_ADMIN_PASSWORD
               valueFrom:
                 secretKeyRef:
