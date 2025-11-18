@@ -1,15 +1,15 @@
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: jenkins-cd
+  name: jenkins
   labels:
-    name: jenkins-cd
+    name: jenkins
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: jenkins
-  namespace: jenkins-cd
+  namespace: jenkins
 spec:
   replicas: 1
   selector:
@@ -22,43 +22,95 @@ spec:
     spec:
       containers:
       - name: jenkins
-        image: jenkins/jenkins:latetst
+        image: jenkins/jenkins:latest
         ports:
           - name: http-port
             containerPort: 8080
           - name: jnlp-port
             containerPort: 50000
         volumeMounts:
-          - name: jenkins-vol
-            mountPath: /var/jenkins_vol
+          - name: jenkins-storage
+            mountPath: /var/jenkins_home
       volumes:
-        - name: jenkins-vol
-          emptyDir: {}
+        - name: jenkins-storage
+          persistentVolumeClaim:
+            claimName: jenkins-data-pvc
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres
+  namespace: jenkins
+  labels:
+    app: postgres
+spec:
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      containers:
+        - name: postgres
+          image: mirror.gcr.io/postgres:17
+          env:
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: jenkins-secrets
+                  key: JK_DB_USERNAME
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: jenkins-secrets
+                  key: JK_DB_PASSWORD
+            - name: POSTGRES_DB
+              valueFrom:
+                secretKeyRef:
+                  name: jenkins-secrets
+                  key: JK_DB_NAME
+            - name: POSTGRES_LOG_STATEMENT
+              value: "all"
+          ports:
+            - name: postgres
+              containerPort: 5432
+          volumeMounts:
+            - name: postgres-storage
+              mountPath: /var/lib/postgresql
+      volumes:
+        - name: postgres-storage
+          persistentVolumeClaim:
+            claimName: postgres-data-pvc
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: postgres
+  name: postgres
+  namespace: jenkins
+spec:
+  selector:
+    app: postgres
+  ports:
+    - protocol: TCP
+      port: 5432
+      targetPort: 5432
+  type: ClusterIP
 ---
 apiVersion: v1
 kind: Service
 metadata:
   name: jenkins
-  namespace: jenkins-cd
+  namespace: jenkins
 spec:
   type: NodePort
   ports:
     - port: 8080
       targetPort: 8080
       nodePort: 30000
-  selector:
-    app: jenkins
----
-
-apiVersion: v1
-kind: Service
-metadata:
-  name: jenkins-jnlp
-  namespace: jenkins-cd
-spec:
-  type: ClusterIP
-  ports:
-    - port: 50000
-      targetPort: 50000
   selector:
     app: jenkins
