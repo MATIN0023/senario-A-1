@@ -5,6 +5,34 @@ metadata:
   labels:
     name: jenkins
 ---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: admin
+rules:
+  - apiGroups: [""]
+    resources: ["*"]
+    verbs: ["*"]
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: admin
+  namespace: jenkins
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: admin
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: admin
+subjects:
+- kind: ServiceAccount
+  name: admin
+  namespace: jenkins
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -14,103 +42,69 @@ spec:
   replicas: 1
   selector:
     matchLabels:
-      app: jenkins
+      app: jenkins-server
   template:
     metadata:
       labels:
-        app: jenkins
+        app: jenkins-server
     spec:
+      securityContext:
+            fsGroup: 1000 
+            runAsUser: 1000
+      serviceAccountName: admin
       containers:
-      - name: jenkins
-        image: jenkins/jenkins:latest
-        ports:
-          - name: http-port
-            containerPort: 8080
-          - name: jnlp-port
-            containerPort: 50000
-        volumeMounts:
-          - name: jenkins-storage
-            mountPath: /var/jenkins_home
-      volumes:
-        - name: jenkins-storage
-          persistentVolumeClaim:
-            claimName: jenkins-data-pvc
----
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: postgres
-  namespace: jenkins
-  labels:
-    app: postgres
-spec:
-  selector:
-    matchLabels:
-      app: postgres
-  template:
-    metadata:
-      labels:
-        app: postgres
-    spec:
-      containers:
-        - name: postgres
-          image: mirror.gcr.io/postgres:17
-          env:
-            - name: POSTGRES_USER
-              valueFrom:
-                secretKeyRef:
-                  name: jenkins-secrets
-                  key: JK_DB_USERNAME
-            - name: POSTGRES_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: jenkins-secrets
-                  key: JK_DB_PASSWORD
-            - name: POSTGRES_DB
-              valueFrom:
-                secretKeyRef:
-                  name: jenkins-secrets
-                  key: JK_DB_NAME
-            - name: POSTGRES_LOG_STATEMENT
-              value: "all"
+        - name: jenkins
+          image: jenkins/jenkins:lts
+          resources:
+            limits:
+              memory: "2Gi"
+              cpu: "1000m"
+            requests:
+              memory: "500Mi"
+              cpu: "500m"
           ports:
-            - name: postgres
-              containerPort: 5432
+            - name: httpport
+              containerPort: 8080
+            - name: jnlpport
+              containerPort: 50000
+          livenessProbe:
+            httpGet:
+              path: "/login"
+              port: 8080
+            initialDelaySeconds: 90
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 5
+          readinessProbe:
+            httpGet:
+              path: "/login"
+              port: 8080
+            initialDelaySeconds: 60
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
           volumeMounts:
-            - name: postgres-storage
-              mountPath: /var/lib/postgresql
+            - name: jenkins-data
+              mountPath: /var/jenkins_home         
       volumes:
-        - name: postgres-storage
+        - name: jenkins-data
           persistentVolumeClaim:
-            claimName: postgres-data-pvc
-
+              claimName: jenkins-data-pvc
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  labels:
-    app: postgres
-  name: postgres
+  name: jenkins-svc
   namespace: jenkins
+  annotations:
+      prometheus.io/scrape: 'true'
+      prometheus.io/path:   /
+      prometheus.io/port:   '8080'
 spec:
-  selector:
-    app: postgres
-  ports:
-    - protocol: TCP
-      port: 5432
-      targetPort: 5432
-  type: ClusterIP
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: jenkins
-  namespace: jenkins
-spec:
-  type: NodePort
+  selector: 
+    app: jenkins-server
+  type: NodePort  
   ports:
     - port: 8080
       targetPort: 8080
-      nodePort: 30000
-  selector:
-    app: jenkins
+      nodePort: 32000
