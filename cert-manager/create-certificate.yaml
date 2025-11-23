@@ -1,0 +1,13 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: my-cert
+  namespace: default
+spec:
+  secretName: my-cert-tls
+  commonName: example.local
+  dnsNames:
+    - example.local
+  issuerRef:
+    name: selfsigned-issuer
+    kind: Issuer
