@@ -41,15 +41,13 @@ spec:
           env:
             - name: GITLAB_OMNIBUS_CONFIG
               value: |
-                external_url 'http://localhost'
+                external_url 'http://192.168.88.14'
                 gitlab_rails['db_adapter'] = 'postgresql'
                 gitlab_rails['db_encoding'] = 'unicode'
                 gitlab_rails['db_host'] = 'gitlab-postgresql.gitlab.svc.cluster.local'
                 gitlab_rails['db_port'] = 5432
                 gitlab_rails['db_username'] = 'gitlab'
                 gitlab_rails['db_password'] = 'gitlabpass'
-                gitlab_rails['redis_host'] = 'gitlab-redis.gitlab.svc.cluster.local'
-                gitlab_rails['redis_port'] = 6379
           volumeMounts:
             - name: gitlab-data
               mountPath: /var/opt/gitlab
@@ -106,44 +104,5 @@ spec:
             claimName: postgres-data-pvc-gitlab
 
 ---
-# Redis
-apiVersion: v1
-kind: Service
-metadata:
-  name: gitlab-redis
-  namespace: gitlab
-spec:
-  type: ClusterIP
-  ports:
-    - port: 6379
-  selector:
-    app: gitlab-redis
----
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: gitlab-redis
-  namespace: gitlab
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: gitlab-redis
-  template:
-    metadata:
-      labels:
-        app: gitlab-redis
-    spec:
-      containers:
-        - name: redis
-          image: redis:7
-          ports:
-            - containerPort: 6379
-          volumeMounts:
-            - name: redis-data
-              mountPath: /data
-      volumes:
-        - name: redis-data
-          emptyDir: {}
 #for get init passworrd :
 # kubectl exec -it gitlab-f9994754c-p9z67  -n gitlab -- grep 'Password:' /etc/gitlab/initial_root_password

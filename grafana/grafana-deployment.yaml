@@ -30,7 +30,7 @@ spec:
                 secretKeyRef:
                   name: test-secret
                   key: username
-            - name: GF_SECURITY_ADMIN_USER_PASSWORD
+            - name: GF_SECURITY_ADMIN_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: test-secret
